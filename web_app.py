@@ -159,6 +159,12 @@ def get_battle_pokemon(pokemon_name):
             stat_value = stat['base_stat']
             stats[stat_name] = stat_value
         
+        # Get moves for special attacks
+        moves = []
+        for move_data in pokemon_details.get('moves', [])[:4]:  # Get first 4 moves
+            move_name = move_data['move']['name']
+            moves.append(move_name)
+        
         battle_data = {
             'id': pokemon_details.get('id'),
             'name': pokemon_details.get('name', '').title(),
@@ -169,8 +175,14 @@ def get_battle_pokemon(pokemon_name):
                 'hp': stats.get('hp', 50),
                 'attack': stats.get('attack', 50),
                 'defense': stats.get('defense', 50),
+                'special-attack': stats.get('special-attack', 50),
+                'special-defense': stats.get('special-defense', 50),
                 'speed': stats.get('speed', 50)
-            }
+            },
+            'moves': moves,
+            'defend_active': False,
+            'attack_multiplier': 1.0,
+            'defense_multiplier': 1.0
         }
         
         return jsonify(battle_data)
@@ -179,29 +191,156 @@ def get_battle_pokemon(pokemon_name):
         logger.error(f"Error fetching battle Pokemon {pokemon_name}: {e}")
         return jsonify({'error': 'Failed to fetch Pokemon battle data'}), 500
 
-@app.route('/api/battle/simulate', methods=['POST'])
-def simulate_battle():
-    """API endpoint to simulate a battle turn"""
+@app.route('/api/battle/computer-action', methods=['POST'])
+def get_computer_action():
+    """API endpoint to get computer's action choice"""
     try:
         data = request.get_json()
+        computer_pokemon = data.get('computer_pokemon')
+        player_pokemon = data.get('player_pokemon')
+        
+        # Calculate HP percentages for decision making
+        computer_hp_percent = computer_pokemon['current_hp'] / computer_pokemon['max_hp']
+        player_hp_percent = player_pokemon['current_hp'] / player_pokemon['max_hp']
+        
+        # AI decision logic with weights
+        action_weights = {}
+        
+        # Always can attack
+        action_weights['attack'] = 40
+        
+        # Heal if low on HP (below 35%)
+        if computer_hp_percent < 0.35:
+            action_weights['heal'] = 50
+        else:
+            action_weights['heal'] = 10
+            
+        # Defend if player has high attack stats or computer is low on HP
+        player_attack = player_pokemon['stats']['attack']
+        if player_attack > computer_pokemon['stats']['defense'] or computer_hp_percent < 0.25:
+            action_weights['defend'] = 30
+        else:
+            action_weights['defend'] = 15
+            
+        # Special move if computer has good special attack
+        if computer_pokemon['stats']['special-attack'] > computer_pokemon['stats']['attack']:
+            action_weights['special'] = 35
+        else:
+            action_weights['special'] = 25
+            
+        # Don't heal if already at high HP
+        if computer_hp_percent > 0.8:
+            action_weights['heal'] = 5
+            
+        # Choose action based on weights
+        actions = list(action_weights.keys())
+        weights = list(action_weights.values())
+        
+        chosen_action = random.choices(actions, weights=weights, k=1)[0]
+        
+        # Generate action description
+        action_descriptions = {
+            'attack': "The opponent is preparing to attack!",
+            'defend': "The opponent is taking a defensive stance!",
+            'heal': "The opponent is focusing to recover!",
+            'special': "The opponent is charging up a special move!"
+        }
+        
+        return jsonify({
+            'action': chosen_action,
+            'description': action_descriptions[chosen_action]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting computer action: {e}")
+        return jsonify({'action': 'attack', 'description': 'The opponent attacks!'}), 500
+
+@app.route('/api/battle/simulate', methods=['POST'])
+def simulate_battle():
+    """API endpoint to simulate a battle turn with different actions"""
+    try:
+        data = request.get_json()
+        action = data.get('action', 'attack')
         attacker = data.get('attacker')
         defender = data.get('defender')
         
-        # Calculate damage: base_attack + random_factor - opponent_defense
-        base_damage = attacker['stats']['attack']
-        random_factor = random.randint(-5, 5)
-        defense = defender['stats']['defense']
-        damage = max(1, base_damage + random_factor - defense)  # Minimum 1 damage
+        result = {}
         
-        # Calculate new HP
-        new_hp = max(0, defender['current_hp'] - damage)
-        
-        result = {
-            'damage': damage,
-            'new_hp': new_hp,
-            'is_fainted': new_hp <= 0,
-            'battle_log': f"{attacker['name']} used Tackle! It dealt {damage} damage to {defender['name']}!"
-        }
+        if action == 'attack':
+            # Standard attack action
+            base_damage = attacker['stats']['attack'] * attacker.get('attack_multiplier', 1.0)
+            random_factor = random.randint(-5, 5)
+            defense = defender['stats']['defense'] * defender.get('defense_multiplier', 1.0)
+            
+            # Apply defend reduction if defender is defending
+            damage = max(1, int(base_damage + random_factor - defense))
+            if defender.get('defend_active', False):
+                damage = int(damage * 0.5)
+                result['defend_blocked'] = True
+            
+            new_hp = max(0, defender['current_hp'] - damage)
+            
+            result = {
+                'action': 'attack',
+                'damage': damage,
+                'new_hp': new_hp,
+                'is_fainted': new_hp <= 0,
+                'battle_log': f"{attacker['name']} used Tackle! It dealt {damage} damage to {defender['name']}!"
+            }
+            
+        elif action == 'defend':
+            # Defend action - sets up damage reduction for next turn
+            result = {
+                'action': 'defend',
+                'damage': 0,
+                'new_hp': defender['current_hp'],
+                'is_fainted': False,
+                'defend_active': True,
+                'battle_log': f"{attacker['name']} is defending! Incoming damage will be reduced next turn."
+            }
+            
+        elif action == 'heal':
+            # Heal action - restore 20% of max HP
+            heal_amount = int(attacker['max_hp'] * 0.2)
+            new_hp = min(attacker['max_hp'], attacker['current_hp'] + heal_amount)
+            actual_heal = new_hp - attacker['current_hp']
+            
+            result = {
+                'action': 'heal',
+                'damage': 0,
+                'heal_amount': actual_heal,
+                'new_hp': new_hp,
+                'is_fainted': False,
+                'battle_log': f"{attacker['name']} used Heal! Restored {actual_heal} HP."
+            }
+            
+        elif action == 'special':
+            # Special move - enhanced damage using special attack
+            base_damage = attacker['stats']['special-attack'] * attacker.get('attack_multiplier', 1.0)
+            random_factor = random.randint(-3, 8)  # Higher variance for special moves
+            defense = defender['stats']['special-defense'] * defender.get('defense_multiplier', 1.0)
+            
+            # Special moves do 1.3x damage
+            damage = max(1, int((base_damage + random_factor - defense) * 1.3))
+            if defender.get('defend_active', False):
+                damage = int(damage * 0.5)
+                result['defend_blocked'] = True
+            
+            new_hp = max(0, defender['current_hp'] - damage)
+            
+            # Get a random move name if available
+            move_name = "Special Attack"
+            if attacker.get('moves') and len(attacker['moves']) > 0:
+                move_name = attacker['moves'][random.randint(0, len(attacker['moves']) - 1)].replace('-', ' ').title()
+            
+            result = {
+                'action': 'special',
+                'damage': damage,
+                'new_hp': new_hp,
+                'is_fainted': new_hp <= 0,
+                'move_name': move_name,
+                'battle_log': f"{attacker['name']} used {move_name}! It dealt {damage} damage to {defender['name']}!"
+            }
         
         return jsonify(result)
         

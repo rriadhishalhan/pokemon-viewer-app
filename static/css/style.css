@@ -1041,9 +1041,90 @@ body {
     100% { filter: brightness(1); }
 }
 
+/* Special Attack Animation */
+.pokemon-sprite.special-attacking {
+    animation: special-attack-animation 0.6s ease;
+}
+
+.left-side .pokemon-sprite.special-attacking {
+    animation: special-attack-left 0.6s ease;
+}
+
+@keyframes special-attack-animation {
+    0% { transform: translateX(0) scale(1); filter: brightness(1); }
+    25% { transform: translateX(15px) scale(1.2); filter: brightness(1.5) hue-rotate(270deg); }
+    50% { transform: translateX(25px) scale(1.3); filter: brightness(2) hue-rotate(270deg) saturate(2); }
+    75% { transform: translateX(15px) scale(1.2); filter: brightness(1.5) hue-rotate(270deg); }
+    100% { transform: translateX(0) scale(1); filter: brightness(1); }
+}
+
+@keyframes special-attack-left {
+    0% { transform: translateX(0) scale(1); filter: brightness(1); }
+    25% { transform: translateX(-15px) scale(1.2); filter: brightness(1.5) hue-rotate(270deg); }
+    50% { transform: translateX(-25px) scale(1.3); filter: brightness(2) hue-rotate(270deg) saturate(2); }
+    75% { transform: translateX(-15px) scale(1.2); filter: brightness(1.5) hue-rotate(270deg); }
+    100% { transform: translateX(0) scale(1); filter: brightness(1); }
+}
+
+/* Defend Animation */
+.pokemon-sprite.defending {
+    animation: defend-animation 0.6s ease;
+}
+
+@keyframes defend-animation {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(0.9); filter: brightness(1.3) hue-rotate(240deg) saturate(1.5); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+.pokemon-sprite.defend-shield {
+    animation: defend-shield-effect 0.8s ease;
+}
+
+@keyframes defend-shield-effect {
+    0% { filter: brightness(1); box-shadow: none; }
+    25% { filter: brightness(1.4) hue-rotate(240deg); box-shadow: 0 0 20px rgba(100, 149, 237, 0.8); }
+    50% { filter: brightness(1.6) hue-rotate(240deg); box-shadow: 0 0 30px rgba(100, 149, 237, 1); }
+    75% { filter: brightness(1.4) hue-rotate(240deg); box-shadow: 0 0 20px rgba(100, 149, 237, 0.8); }
+    100% { filter: brightness(1); box-shadow: none; }
+}
+
+/* Heal Animation */
+.pokemon-sprite.healing {
+    animation: heal-animation 0.6s ease;
+}
+
+@keyframes heal-animation {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.1); filter: brightness(1.4) hue-rotate(120deg) saturate(1.3); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+.pokemon-sprite.heal-glow {
+    animation: heal-glow-effect 1s ease;
+}
+
+@keyframes heal-glow-effect {
+    0% { filter: brightness(1); box-shadow: none; }
+    25% { filter: brightness(1.3) hue-rotate(120deg); box-shadow: 0 0 15px rgba(72, 187, 120, 0.6); }
+    50% { filter: brightness(1.5) hue-rotate(120deg); box-shadow: 0 0 25px rgba(72, 187, 120, 1); }
+    75% { filter: brightness(1.3) hue-rotate(120deg); box-shadow: 0 0 15px rgba(72, 187, 120, 0.6); }
+    100% { filter: brightness(1); box-shadow: none; }
+}
+
 .battle-controls {
     text-align: center;
     margin-bottom: 2rem;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .btn-attack {
@@ -1056,15 +1137,56 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    margin-right: 1rem;
 }
 
-.btn-attack:hover:not(:disabled) {
+.btn-defend {
+    background: linear-gradient(135deg, #4299e1, #3182ce);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-heal {
+    background: linear-gradient(135deg, #48bb78, #38a169);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-special {
+    background: linear-gradient(135deg, #9f7aea, #805ad5);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-attack:hover:not(:disabled),
+.btn-defend:hover:not(:disabled),
+.btn-heal:hover:not(:disabled),
+.btn-special:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(245, 101, 101, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
-.btn-attack:disabled {
+.btn-attack:disabled,
+.btn-defend:disabled,
+.btn-heal:disabled,
+.btn-special:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
@@ -1154,6 +1276,16 @@ body {
         width: 120px;
         height: 120px;
     }
+    
+    .action-buttons {
+        max-width: 300px;
+        gap: 0.8rem;
+    }
+    
+    .btn-attack, .btn-defend, .btn-heal, .btn-special {
+        padding: 0.8rem 1.5rem;
+        font-size: 1rem;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1176,5 +1308,16 @@ body {
     
     .battle-arena {
         padding: 1rem;
+    }
+    
+    .action-buttons {
+        grid-template-columns: 1fr;
+        max-width: 250px;
+        gap: 0.6rem;
+    }
+    
+    .btn-attack, .btn-defend, .btn-heal, .btn-special {
+        padding: 0.7rem 1rem;
+        font-size: 0.95rem;
     }
 }

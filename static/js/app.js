@@ -75,8 +75,21 @@ class PokemonViewer {
             this.startBattle();
         });
 
+        // Battle action event listeners
         document.getElementById('attack-btn')?.addEventListener('click', () => {
             this.performPlayerAttack();
+        });
+        
+        document.getElementById('defend-btn')?.addEventListener('click', () => {
+            this.performPlayerDefend();
+        });
+        
+        document.getElementById('heal-btn')?.addEventListener('click', () => {
+            this.performPlayerHeal();
+        });
+        
+        document.getElementById('special-btn')?.addEventListener('click', () => {
+            this.performPlayerSpecial();
         });
 
         document.getElementById('new-battle-btn')?.addEventListener('click', () => {
@@ -541,8 +554,8 @@ class PokemonViewer {
         this.addBattleLog(`Battle begins! ${this.battleState.pokemon1.name} vs ${this.battleState.pokemon2.name}!`);
         this.addBattleLog(`${this.battleState.pokemon1.name}, it's your turn!`);
         
-        // Enable attack button for player turn
-        document.getElementById('attack-btn').disabled = false;
+        // Enable action buttons for player turn
+        this.toggleActionButtons(false);
     }
     
     setupBattleDisplay() {
@@ -598,46 +611,104 @@ class PokemonViewer {
         }
     }
     
-    async performPlayerAttack() {
+    toggleActionButtons(disabled) {
+        const buttons = ['attack-btn', 'defend-btn', 'heal-btn', 'special-btn'];
+        buttons.forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) btn.disabled = disabled;
+        });
+    }
+
+    async performPlayerAction(action) {
         if (!this.battleState.isActive || this.battleState.currentTurn !== 1) return;
         
-        await this.performAttack(1, 2);
+        await this.performAction(1, 2, action);
         
         // Switch to computer turn if battle is still active
         if (this.battleState.isActive) {
             this.battleState.currentTurn = 2;
             this.updateTurnInfo();
-            document.getElementById('attack-btn').disabled = true;
+            this.toggleActionButtons(true);
             document.getElementById('computer-thinking').style.display = 'block';
             
-            // Computer attacks after 2 seconds
-            setTimeout(() => {
-                this.performComputerAttack();
+            // Get computer action and execute after 2 seconds
+            setTimeout(async () => {
+                await this.performComputerAction();
             }, 2000);
         }
     }
-    
-    async performComputerAttack() {
+
+    async performComputerAction() {
         if (!this.battleState.isActive || this.battleState.currentTurn !== 2) return;
         
         document.getElementById('computer-thinking').style.display = 'none';
         
-        await this.performAttack(2, 1);
-        
-        // Switch back to player turn if battle is still active
-        if (this.battleState.isActive) {
-            this.battleState.currentTurn = 1;
-            this.updateTurnInfo();
-            document.getElementById('attack-btn').disabled = false;
+        try {
+            // Get computer's chosen action
+            const response = await fetch('/api/battle/computer-action', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    computer_pokemon: this.battleState.pokemon2,
+                    player_pokemon: this.battleState.pokemon1
+                })
+            });
+            
+            const actionData = await response.json();
+            this.addBattleLog(actionData.description);
+            
+            // Execute the action after a brief delay
+            setTimeout(async () => {
+                await this.performAction(2, 1, actionData.action);
+                
+                // Switch back to player turn if battle is still active
+                if (this.battleState.isActive) {
+                    this.battleState.currentTurn = 1;
+                    this.updateTurnInfo();
+                    this.toggleActionButtons(false);
+                }
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Error getting computer action:', error);
+            // Fallback to attack
+            await this.performAction(2, 1, 'attack');
+            
+            if (this.battleState.isActive) {
+                this.battleState.currentTurn = 1;
+                this.updateTurnInfo();
+                this.toggleActionButtons(false);
+            }
         }
     }
 
-    async performAttack(attackerNum, defenderNum) {
+    async performPlayerAttack() {
+        await this.performPlayerAction('attack');
+    }
+
+    async performPlayerDefend() {
+        await this.performPlayerAction('defend');
+    }
+
+    async performPlayerHeal() {
+        await this.performPlayerAction('heal');
+    }
+
+    async performPlayerSpecial() {
+        await this.performPlayerAction('special');
+    }    async performAction(attackerNum, defenderNum, action) {
         const attacker = this.battleState[`pokemon${attackerNum}`];
         const defender = this.battleState[`pokemon${defenderNum}`];
         
-        // Play attack animation
-        this.playAttackAnimation(attackerNum);
+        // Reset previous turn modifiers for attacker
+        attacker.defend_active = false;
+        attacker.attack_multiplier = 1.0;
+        attacker.defense_multiplier = 1.0;
+        
+        // Play action-specific animation
+        this.playActionAnimation(attackerNum, action);
         
         try {
             const response = await fetch('/api/battle/simulate', {
@@ -646,6 +717,7 @@ class PokemonViewer {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
+                    action: action,
                     attacker: attacker,
                     defender: defender
                 })
@@ -654,37 +726,94 @@ class PokemonViewer {
             const result = await response.json();
             
             if (response.ok) {
-                // Update defender's HP
-                this.battleState[`pokemon${defenderNum}`].current_hp = result.new_hp;
-                
-                setTimeout(() => {
-                    // Play red blink hit animation
-                    this.playRedBlinkAnimation(defenderNum);
+                // Handle different action results
+                if (action === 'heal') {
+                    // Update attacker's HP for heal action
+                    this.battleState[`pokemon${attackerNum}`].current_hp = result.new_hp;
+                    setTimeout(() => {
+                        this.playHealAnimation(attackerNum);
+                        this.updateHPBar(attackerNum);
+                        this.addBattleLog(result.battle_log);
+                    }, 300);
+                } else if (action === 'defend') {
+                    // Set defend status for attacker
+                    this.battleState[`pokemon${attackerNum}`].defend_active = true;
+                    this.battleState[`pokemon${attackerNum}`].defense_multiplier = 2.0;
+                    setTimeout(() => {
+                        this.playDefendAnimation(attackerNum);
+                        this.addBattleLog(result.battle_log);
+                    }, 300);
+                } else {
+                    // Handle attack and special actions (damage to defender)
+                    this.battleState[`pokemon${defenderNum}`].current_hp = result.new_hp;
                     
-                    // Update HP bar
-                    this.updateHPBar(defenderNum);
-                    
-                    // Add to battle log
-                    this.addBattleLog(result.battle_log);
-                    
-                    // Check if battle is over
-                    if (result.is_fainted) {
-                        this.endBattle(attackerNum);
-                    }
-                }, 300);
+                    setTimeout(() => {
+                        // Play red blink hit animation on defender
+                        this.playRedBlinkAnimation(defenderNum);
+                        
+                        // Update defender HP bar
+                        this.updateHPBar(defenderNum);
+                        
+                        // Add to battle log
+                        this.addBattleLog(result.battle_log);
+                        
+                        // Check if battle is over
+                        if (result.is_fainted) {
+                            this.endBattle(attackerNum);
+                        }
+                    }, 300);
+                }
             }
         } catch (error) {
-            console.error('Error simulating attack:', error);
+            console.error('Error simulating action:', error);
         }
     }
-    
-    playAttackAnimation(playerNum) {
+
+    playActionAnimation(playerNum, action) {
         const sprite = document.getElementById(`pokemon${playerNum}-sprite`);
         if (sprite) {
-            sprite.classList.add('attacking');
+            let animationClass;
+            switch(action) {
+                case 'attack':
+                    animationClass = 'attacking';
+                    break;
+                case 'special':
+                    animationClass = 'special-attacking';
+                    break;
+                case 'defend':
+                    animationClass = 'defending';
+                    break;
+                case 'heal':
+                    animationClass = 'healing';
+                    break;
+                default:
+                    animationClass = 'attacking';
+            }
+            
+            sprite.classList.add(animationClass);
             setTimeout(() => {
-                sprite.classList.remove('attacking');
+                sprite.classList.remove(animationClass);
             }, 600);
+        }
+    }
+
+    playHealAnimation(playerNum) {
+        const sprite = document.getElementById(`pokemon${playerNum}-sprite`);
+        if (sprite) {
+            sprite.classList.add('heal-glow');
+            setTimeout(() => {
+                sprite.classList.remove('heal-glow');
+            }, 1000);
+        }
+    }
+
+    playDefendAnimation(playerNum) {
+        const sprite = document.getElementById(`pokemon${playerNum}-sprite`);
+        if (sprite) {
+            sprite.classList.add('defend-shield');
+            setTimeout(() => {
+                sprite.classList.remove('defend-shield');
+            }, 800);
         }
     }
     
@@ -735,11 +864,11 @@ class PokemonViewer {
             log.scrollTop = log.scrollHeight;
         }
         
-        // Hide attack button, show new battle button
-        document.getElementById('attack-btn').style.display = 'none';
+        // Hide action buttons, show new battle button
+        document.getElementById('action-buttons').style.display = 'none';
         document.getElementById('new-battle-btn').style.display = 'inline-block';
     }
-    
+
     resetBattle() {
         // Reset battle state
         this.battleState = {
@@ -753,7 +882,7 @@ class PokemonViewer {
         // Reset UI
         document.getElementById('battle-arena').style.display = 'none';
         document.getElementById('battle-setup').style.display = 'block';
-        document.getElementById('attack-btn').style.display = 'inline-block';
+        document.getElementById('action-buttons').style.display = 'grid';
         document.getElementById('new-battle-btn').style.display = 'none';
         document.getElementById('computer-thinking').style.display = 'none';
         
