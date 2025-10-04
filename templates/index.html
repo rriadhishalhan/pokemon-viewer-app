@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Pokemon Viewer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">
+                <i class="fas fa-gamepad"></i>
+                Pokemon Viewer
+            </h1>
+            <nav class="nav">
+                <a href="#home" class="nav-link active" data-section="home">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a href="#search" class="nav-link" data-section="search">
+                    <i class="fas fa-search"></i> Search
+                </a>
+                <a href="#about" class="nav-link" data-section="about">
+                    <i class="fas fa-info-circle"></i> About
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="container">
+                <div class="hero">
+                    <h2>Discover the World of Pokemon</h2>
+                    <p>Browse through all Pokemon with our beautiful lazy-loading interface</p>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="loading" class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading Pokemon...</p>
+                </div>
+
+                <!-- Pokemon Grid -->
+                <div id="pokemon-grid" class="pokemon-grid"></div>
+
+                <!-- Pagination -->
+                <div id="pagination" class="pagination">
+                    <button id="prev-btn" class="btn btn-secondary">
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </button>
+                    <span id="page-info" class="page-info">Page 1 of 1</span>
+                    <button id="next-btn" class="btn btn-secondary">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Section -->
+        <section id="search" class="section">
+            <div class="container">
+                <div class="search-hero">
+                    <h2>Search Pokemon</h2>
+                    <p>Find your favorite Pokemon by name</p>
+                </div>
+
+                <div class="search-container">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Enter Pokemon name (e.g., Pikachu)">
+                        <button id="search-btn" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Results -->
+                <div id="search-results" class="search-results"></div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="section">
+            <div class="container">
+                <div class="about-content">
+                    <h2>About Pokemon Viewer</h2>
+                    <div class="about-grid">
+                        <div class="about-card">
+                            <i class="fas fa-rocket"></i>
+                            <h3>Lazy Loading</h3>
+                            <p>Efficient loading system that fetches Pokemon data on-demand for optimal performance.</p>
+                        </div>
+                        <div class="about-card">
+                            <i class="fas fa-search"></i>
+                            <h3>Search Function</h3>
+                            <p>Find any Pokemon instantly by name with our powerful search functionality.</p>
+                        </div>
+                        <div class="about-card">
+                            <i class="fas fa-mobile-alt"></i>
+                            <h3>Responsive Design</h3>
+                            <p>Beautiful interface that works perfectly on desktop, tablet, and mobile devices.</p>
+                        </div>
+                        <div class="about-card">
+                            <i class="fas fa-database"></i>
+                            <h3>PokeAPI Integration</h3>
+                            <p>Powered by the official PokeAPI with comprehensive Pokemon data and images.</p>
+                        </div>
+                    </div>
+                    <div class="tech-stack">
+                        <h3>Technology Stack</h3>
+                        <div class="tech-items">
+                            <span class="tech-item">Python</span>
+                            <span class="tech-item">Flask</span>
+                            <span class="tech-item">JavaScript</span>
+                            <span class="tech-item">CSS3</span>
+                            <span class="tech-item">PokeAPI</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Pokemon Modal -->
+    <div id="pokemon-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <div id="modal-body" class="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Pokemon Viewer. Powered by <a href="https://pokeapi.co/" target="_blank">PokeAPI</a></p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
