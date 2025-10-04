@@ -7,6 +7,7 @@ A modern Python application that consumes the [PokeAPI](https://pokeapi.co/) to 
 - **🌐 Web Interface**: Modern, responsive web application with beautiful UI
 - **💻 Console Interface**: Rich terminal interface for command-line users
 - **🔄 Lazy Loading**: Load Pokemon data on-demand with pagination to avoid overwhelming the API
+- **✨ Skeleton Loading**: Beautiful animated skeleton cards during page transitions and searches
 - **🔍 Search Function**: Find specific Pokemon by name in both interfaces
 - **📱 Responsive Design**: Web interface works perfectly on desktop, tablet, and mobile
 - **🎨 Beautiful Interface**: Rich console interface with colors, tables, and panels
@@ -17,6 +18,7 @@ A modern Python application that consumes the [PokeAPI](https://pokeapi.co/) to 
   - Pokemon Description
   - Sprite Images (web interface)
 - **📄 Pagination**: Shows current page, total pages, and navigation options
+- **✨ Skeleton Loading**: Smooth animated placeholders during content loading
 - **⚡ Fast Performance**: Optimized loading with API rate limiting
 - **🛠️ Error Handling**: Graceful error handling for network issues and invalid inputs
 
@@ -78,7 +80,8 @@ The application uses the following Python packages:
 The web interface provides the best user experience with:
 
 - **Home Page**: Browse Pokemon with beautiful card layout and lazy loading
-- **Search Page**: Find specific Pokemon with instant search
+- **Skeleton Loading**: Animated placeholder cards during page transitions for seamless UX
+- **Search Page**: Find specific Pokemon with instant search and skeleton preview
 - **About Page**: Learn about the application and technology stack
 - **Pokemon Details**: Click any Pokemon card to see detailed information in a modal
 - **Responsive Design**: Works on all devices and screen sizes
@@ -175,6 +178,7 @@ pokemon-viewer/
 The application implements lazy loading through:
 
 - **Pagination**: Loads only 12 Pokemon per page for web interface, 10 for console
+- **Skeleton Loading**: Shows animated placeholder cards during data fetching for better UX
 - **On-Demand Loading**: Fetches detailed information only when needed
 - **API Rate Limiting**: Includes small delays between requests to be respectful to the API
 - **Memory Efficient**: Doesn't load all Pokemon at once
