@@ -23,6 +23,9 @@
                 <a href="#search" class="nav-link" data-section="search">
                     <i class="fas fa-search"></i> Search
                 </a>
+                <a href="#battle" class="nav-link" data-section="battle">
+                    <i class="fas fa-fist-raised"></i> Battle
+                </a>
                 <a href="#about" class="nav-link" data-section="about">
                     <i class="fas fa-info-circle"></i> About
                 </a>
@@ -81,6 +84,107 @@
 
                 <!-- Search Results -->
                 <div id="search-results" class="search-results"></div>
+            </div>
+        </section>
+
+        <!-- Battle Section -->
+        <section id="battle" class="section">
+            <div class="container">
+                <div class="battle-hero">
+                    <h2>Pokemon Battle Simulator</h2>
+                    <p>Choose two Pokemon and watch them battle in an epic turn-based fight!</p>
+                </div>
+
+                <!-- Pokemon Selection -->
+                <div class="battle-setup" id="battle-setup">
+                    <div class="pokemon-selectors">
+                        <div class="pokemon-selector">
+                            <h3>Your Pokemon</h3>
+                            <select id="pokemon1-select" class="pokemon-dropdown">
+                                <option value="">Choose your Pokemon...</option>
+                            </select>
+                            <div id="pokemon1-preview" class="pokemon-preview"></div>
+                        </div>
+                        
+                        <div class="vs-divider">
+                            <span class="vs-text">VS</span>
+                        </div>
+                        
+                        <div class="pokemon-selector">
+                            <h3>Opponent Pokemon</h3>
+                            <button id="random-opponent-btn" class="btn btn-random">
+                                <i class="fas fa-dice"></i> Random Opponent
+                            </button>
+                            <div id="pokemon2-preview" class="pokemon-preview">
+                                <p style="color: #888;">Click "Random Opponent" to generate</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="start-battle-btn" class="btn btn-battle" disabled>
+                        <i class="fas fa-fist-raised"></i> Start Battle!
+                    </button>
+                </div>
+
+                <!-- Battle Arena -->
+                <div class="battle-arena" id="battle-arena" style="display: none;">
+                    <!-- Turn Information -->
+                    <div class="turn-info" id="turn-info">
+                        <div class="turn-indicator">
+                            <span id="turn-text">Your Turn</span>
+                            <div class="turn-arrow" id="turn-arrow"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="battle-field">
+                        <div class="pokemon-side left-side">
+                            <div id="pokemon1-battle" class="battle-pokemon">
+                                <div class="pokemon-info">
+                                    <h3 id="pokemon1-name"></h3>
+                                    <div class="hp-bar-container">
+                                        <div class="hp-bar">
+                                            <div id="pokemon1-hp-fill" class="hp-fill"></div>
+                                        </div>
+                                        <span id="pokemon1-hp-text" class="hp-text">100/100</span>
+                                    </div>
+                                </div>
+                                <div id="pokemon1-sprite" class="pokemon-sprite back-sprite"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="pokemon-side right-side">
+                            <div id="pokemon2-battle" class="battle-pokemon">
+                                <div class="pokemon-info">
+                                    <h3 id="pokemon2-name"></h3>
+                                    <div class="hp-bar-container">
+                                        <div class="hp-bar">
+                                            <div id="pokemon2-hp-fill" class="hp-fill"></div>
+                                        </div>
+                                        <span id="pokemon2-hp-text" class="hp-text">100/100</span>
+                                    </div>
+                                </div>
+                                <div id="pokemon2-sprite" class="pokemon-sprite front-sprite"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="battle-controls">
+                        <button id="attack-btn" class="btn btn-attack">
+                            <i class="fas fa-sword"></i> Attack!
+                        </button>
+                        <div id="computer-thinking" class="computer-thinking" style="display: none;">
+                            <i class="fas fa-robot"></i> Computer is thinking...
+                        </div>
+                        <button id="new-battle-btn" class="btn btn-secondary" style="display: none;">
+                            <i class="fas fa-redo"></i> New Battle
+                        </button>
+                    </div>
+                    
+                    <div class="battle-log-container">
+                        <h4>Battle Log</h4>
+                        <div id="battle-log" class="battle-log"></div>
+                    </div>
+                </div>
             </div>
         </section>
 

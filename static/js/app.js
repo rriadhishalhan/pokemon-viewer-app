@@ -3,12 +3,20 @@ class PokemonViewer {
     constructor() {
         this.currentPage = 1;
         this.isLoading = false;
+        this.battleState = {
+            pokemon1: null,
+            pokemon2: null,
+            currentTurn: 1, // Always start with player 1
+            isActive: false,
+            pokemonList: []
+        };
         this.init();
     }
 
     init() {
         this.setupEventListeners();
         this.loadPokemonPage(1);
+        this.loadPokemonList();
     }
 
     setupEventListeners() {
@@ -52,6 +60,27 @@ class PokemonViewer {
             if (e.key === 'Escape') {
                 this.closeModal();
             }
+        });
+
+        // Battle event listeners
+        document.getElementById('pokemon1-select')?.addEventListener('change', (e) => {
+            this.loadBattlePokemon(e.target.value, 1);
+        });
+
+        document.getElementById('random-opponent-btn')?.addEventListener('click', () => {
+            this.generateRandomOpponent();
+        });
+
+        document.getElementById('start-battle-btn')?.addEventListener('click', () => {
+            this.startBattle();
+        });
+
+        document.getElementById('attack-btn')?.addEventListener('click', () => {
+            this.performPlayerAttack();
+        });
+
+        document.getElementById('new-battle-btn')?.addEventListener('click', () => {
+            this.resetBattle();
         });
     }
 
@@ -387,6 +416,353 @@ class PokemonViewer {
             </div>
         `;
         this.hideLoading();
+    }
+    
+    // Battle Methods
+    async loadPokemonList() {
+        try {
+            const response = await fetch('/api/pokemon-list');
+            const data = await response.json();
+            
+            if (data.pokemon) {
+                this.battleState.pokemonList = data.pokemon;
+                this.populateDropdown(data.pokemon);
+            }
+        } catch (error) {
+            console.error('Error loading Pokemon list:', error);
+        }
+    }
+    
+    populateDropdown(pokemonList) {
+        const dropdown1 = document.getElementById('pokemon1-select');
+        
+        if (!dropdown1) return;
+        
+        pokemonList.forEach(pokemon => {
+            const option1 = document.createElement('option');
+            option1.value = pokemon;
+            option1.textContent = pokemon.charAt(0).toUpperCase() + pokemon.slice(1);
+            dropdown1.appendChild(option1);
+        });
+    }
+    
+    async generateRandomOpponent() {
+        if (this.battleState.pokemonList.length === 0) return;
+        
+        const randomIndex = Math.floor(Math.random() * this.battleState.pokemonList.length);
+        const randomPokemon = this.battleState.pokemonList[randomIndex];
+        
+        await this.loadBattlePokemon(randomPokemon, 2);
+    }
+    
+    async loadBattlePokemon(pokemonName, playerNum) {
+        if (!pokemonName) {
+            this.clearPokemonPreview(playerNum);
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/battle/pokemon/${pokemonName}`);
+            const pokemon = await response.json();
+            
+            if (response.ok) {
+                this.battleState[`pokemon${playerNum}`] = {
+                    ...pokemon,
+                    max_hp: pokemon.stats.hp,
+                    current_hp: pokemon.stats.hp
+                };
+                this.updatePokemonPreview(pokemon, playerNum);
+                this.checkBattleReady();
+            }
+        } catch (error) {
+            console.error('Error loading battle Pokemon:', error);
+        }
+    }
+    
+    updatePokemonPreview(pokemon, playerNum) {
+        const preview = document.getElementById(`pokemon${playerNum}-preview`);
+        if (!preview) return;
+        
+        const typeBadges = pokemon.types.map(type => 
+            `<span class="type-badge type-${type}">${type}</span>`
+        ).join('');
+        
+        preview.innerHTML = `
+            <img src="${pokemon.sprite_url}" alt="${pokemon.name}" onerror="this.src='/static/images/pokeball.png'">
+            <div class="preview-info">
+                <div class="preview-name">${pokemon.name}</div>
+                <div class="pokemon-types">${typeBadges}</div>
+                <div class="preview-stats">
+                    <div>HP: ${pokemon.stats.hp}</div>
+                    <div>ATK: ${pokemon.stats.attack}</div>
+                    <div>DEF: ${pokemon.stats.defense}</div>
+                    <div>SPD: ${pokemon.stats.speed}</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    clearPokemonPreview(playerNum) {
+        const preview = document.getElementById(`pokemon${playerNum}-preview`);
+        if (preview) {
+            preview.innerHTML = '<p style="color: #888;">Select a Pokemon to see preview</p>';
+        }
+        this.battleState[`pokemon${playerNum}`] = null;
+        this.checkBattleReady();
+    }
+    
+    checkBattleReady() {
+        const startBtn = document.getElementById('start-battle-btn');
+        const ready = this.battleState.pokemon1 && this.battleState.pokemon2;
+        
+        if (startBtn) {
+            startBtn.disabled = !ready;
+        }
+    }
+    
+    startBattle() {
+        if (!this.battleState.pokemon1 || !this.battleState.pokemon2) return;
+        
+        // Reset HP
+        this.battleState.pokemon1.current_hp = this.battleState.pokemon1.max_hp;
+        this.battleState.pokemon2.current_hp = this.battleState.pokemon2.max_hp;
+        
+        // Player always starts first
+        this.battleState.currentTurn = 1;
+        this.battleState.isActive = true;
+        
+        // Show battle arena
+        document.getElementById('battle-setup').style.display = 'none';
+        document.getElementById('battle-arena').style.display = 'block';
+        
+        // Setup battle display
+        this.setupBattleDisplay();
+        this.updateTurnInfo();
+        this.addBattleLog(`Battle begins! ${this.battleState.pokemon1.name} vs ${this.battleState.pokemon2.name}!`);
+        this.addBattleLog(`${this.battleState.pokemon1.name}, it's your turn!`);
+        
+        // Enable attack button for player turn
+        document.getElementById('attack-btn').disabled = false;
+    }
+    
+    setupBattleDisplay() {
+        // Setup Pokemon 1 (left side - back sprite)
+        document.getElementById('pokemon1-name').textContent = this.battleState.pokemon1.name;
+        document.getElementById('pokemon1-sprite').innerHTML = 
+            `<img src="${this.battleState.pokemon1.back_sprite_url || this.battleState.pokemon1.sprite_url}" alt="${this.battleState.pokemon1.name}">`;
+        this.updateHPBar(1);
+        
+        // Setup Pokemon 2 (right side - front sprite)
+        document.getElementById('pokemon2-name').textContent = this.battleState.pokemon2.name;
+        document.getElementById('pokemon2-sprite').innerHTML = 
+            `<img src="${this.battleState.pokemon2.sprite_url}" alt="${this.battleState.pokemon2.name}">`;
+        this.updateHPBar(2);
+        
+        // Clear battle log
+        document.getElementById('battle-log').innerHTML = '';
+    }
+    
+    updateTurnInfo() {
+        const turnText = document.getElementById('turn-text');
+        const turnArrow = document.getElementById('turn-arrow');
+        
+        if (this.battleState.currentTurn === 1) {
+            turnText.textContent = 'Your Turn';
+            turnArrow.className = 'turn-arrow left';
+        } else {
+            turnText.textContent = 'Opponent\'s Turn';
+            turnArrow.className = 'turn-arrow right';
+        }
+    }
+    
+    updateHPBar(playerNum) {
+        const pokemon = this.battleState[`pokemon${playerNum}`];
+        const hpPercent = (pokemon.current_hp / pokemon.max_hp) * 100;
+        
+        const hpFill = document.getElementById(`pokemon${playerNum}-hp-fill`);
+        const hpText = document.getElementById(`pokemon${playerNum}-hp-text`);
+        
+        if (hpFill) {
+            hpFill.style.width = `${hpPercent}%`;
+            hpFill.className = 'hp-fill';
+            
+            if (hpPercent <= 25) {
+                hpFill.classList.add('low');
+            } else if (hpPercent <= 50) {
+                hpFill.classList.add('medium');
+            }
+        }
+        
+        if (hpText) {
+            hpText.textContent = `${pokemon.current_hp}/${pokemon.max_hp}`;
+        }
+    }
+    
+    async performPlayerAttack() {
+        if (!this.battleState.isActive || this.battleState.currentTurn !== 1) return;
+        
+        await this.performAttack(1, 2);
+        
+        // Switch to computer turn if battle is still active
+        if (this.battleState.isActive) {
+            this.battleState.currentTurn = 2;
+            this.updateTurnInfo();
+            document.getElementById('attack-btn').disabled = true;
+            document.getElementById('computer-thinking').style.display = 'block';
+            
+            // Computer attacks after 2 seconds
+            setTimeout(() => {
+                this.performComputerAttack();
+            }, 2000);
+        }
+    }
+    
+    async performComputerAttack() {
+        if (!this.battleState.isActive || this.battleState.currentTurn !== 2) return;
+        
+        document.getElementById('computer-thinking').style.display = 'none';
+        
+        await this.performAttack(2, 1);
+        
+        // Switch back to player turn if battle is still active
+        if (this.battleState.isActive) {
+            this.battleState.currentTurn = 1;
+            this.updateTurnInfo();
+            document.getElementById('attack-btn').disabled = false;
+        }
+    }
+
+    async performAttack(attackerNum, defenderNum) {
+        const attacker = this.battleState[`pokemon${attackerNum}`];
+        const defender = this.battleState[`pokemon${defenderNum}`];
+        
+        // Play attack animation
+        this.playAttackAnimation(attackerNum);
+        
+        try {
+            const response = await fetch('/api/battle/simulate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    attacker: attacker,
+                    defender: defender
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                // Update defender's HP
+                this.battleState[`pokemon${defenderNum}`].current_hp = result.new_hp;
+                
+                setTimeout(() => {
+                    // Play red blink hit animation
+                    this.playRedBlinkAnimation(defenderNum);
+                    
+                    // Update HP bar
+                    this.updateHPBar(defenderNum);
+                    
+                    // Add to battle log
+                    this.addBattleLog(result.battle_log);
+                    
+                    // Check if battle is over
+                    if (result.is_fainted) {
+                        this.endBattle(attackerNum);
+                    }
+                }, 300);
+            }
+        } catch (error) {
+            console.error('Error simulating attack:', error);
+        }
+    }
+    
+    playAttackAnimation(playerNum) {
+        const sprite = document.getElementById(`pokemon${playerNum}-sprite`);
+        if (sprite) {
+            sprite.classList.add('attacking');
+            setTimeout(() => {
+                sprite.classList.remove('attacking');
+            }, 600);
+        }
+    }
+    
+    playRedBlinkAnimation(playerNum) {
+        const sprite = document.getElementById(`pokemon${playerNum}-sprite`);
+        if (sprite) {
+            sprite.classList.add('hit-red');
+            setTimeout(() => {
+                sprite.classList.remove('hit-red');
+            }, 800);
+        }
+    }
+    
+    playHitAnimation(playerNum) {
+        const sprite = document.getElementById(`pokemon${playerNum}-sprite`);
+        if (sprite) {
+            sprite.classList.add('hit');
+            setTimeout(() => {
+                sprite.classList.remove('hit');
+            }, 600);
+        }
+    }
+    
+    addBattleLog(message) {
+        const log = document.getElementById('battle-log');
+        if (log) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+    }
+    
+    endBattle(winnerNum) {
+        this.battleState.isActive = false;
+        const winner = this.battleState[`pokemon${winnerNum}`];
+        
+        this.addBattleLog(`${winner.name} wins the battle!`);
+        
+        // Add winner message to log
+        const log = document.getElementById('battle-log');
+        if (log) {
+            const winnerEntry = document.createElement('div');
+            winnerEntry.className = 'log-entry winner';
+            winnerEntry.textContent = `🏆 ${winner.name} is victorious! 🏆`;
+            log.appendChild(winnerEntry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // Hide attack button, show new battle button
+        document.getElementById('attack-btn').style.display = 'none';
+        document.getElementById('new-battle-btn').style.display = 'inline-block';
+    }
+    
+    resetBattle() {
+        // Reset battle state
+        this.battleState = {
+            pokemon1: null,
+            pokemon2: null,
+            currentTurn: 1,
+            isActive: false,
+            pokemonList: this.battleState.pokemonList // Keep the pokemon list
+        };
+        
+        // Reset UI
+        document.getElementById('battle-arena').style.display = 'none';
+        document.getElementById('battle-setup').style.display = 'block';
+        document.getElementById('attack-btn').style.display = 'inline-block';
+        document.getElementById('new-battle-btn').style.display = 'none';
+        document.getElementById('computer-thinking').style.display = 'none';
+        
+        // Reset dropdown
+        document.getElementById('pokemon1-select').value = '';
+        
+        // Clear previews
+        this.clearPokemonPreview(1);
+        this.clearPokemonPreview(2);
     }
 }
 
