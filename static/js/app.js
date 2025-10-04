@@ -73,7 +73,7 @@ class PokemonViewer {
         if (this.isLoading) return;
 
         this.isLoading = true;
-        this.showLoading();
+        this.showSkeletonLoading();
 
         try {
             const response = await fetch(`/api/pokemon?page=${page}&limit=12`);
@@ -95,6 +95,63 @@ class PokemonViewer {
         } finally {
             this.isLoading = false;
         }
+    }
+
+    showSkeletonLoading() {
+        const grid = document.getElementById('pokemon-grid');
+        grid.innerHTML = '';
+        
+        // Create 12 skeleton cards (same as page size)
+        for (let i = 0; i < 12; i++) {
+            const skeletonCard = this.createSkeletonCard();
+            grid.appendChild(skeletonCard);
+        }
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('pokemon-grid').style.display = 'grid';
+        document.getElementById('pagination').style.display = 'flex';
+    }
+
+    createSkeletonCard() {
+        const card = document.createElement('div');
+        card.className = 'skeleton-card';
+        
+        // Randomize number of type badges (1-2)
+        const typeCount = Math.random() > 0.3 ? 2 : 1;
+        const typeBadges = Array(typeCount).fill(0).map(() => 
+            '<div class="skeleton skeleton-type"></div>'
+        ).join('');
+        
+        card.innerHTML = `
+            <div class="skeleton-header">
+                <div class="skeleton skeleton-id"></div>
+                <div class="skeleton skeleton-name"></div>
+            </div>
+            <div class="skeleton-image skeleton"></div>
+            <div class="skeleton-types">
+                ${typeBadges}
+            </div>
+            <div class="skeleton-stats">
+                <div class="skeleton-stat-row">
+                    <div class="skeleton skeleton-stat-label"></div>
+                    <div class="skeleton skeleton-stat-value"></div>
+                </div>
+                <div class="skeleton-stat-row">
+                    <div class="skeleton skeleton-stat-label"></div>
+                    <div class="skeleton skeleton-stat-value"></div>
+                </div>
+                <div class="skeleton-stat-row">
+                    <div class="skeleton skeleton-stat-label"></div>
+                    <div class="skeleton skeleton-stat-value"></div>
+                </div>
+                <div class="skeleton-stat-row">
+                    <div class="skeleton skeleton-stat-label"></div>
+                    <div class="skeleton skeleton-stat-value"></div>
+                </div>
+            </div>
+        `;
+        
+        return card;
     }
 
     showLoading() {
@@ -214,12 +271,12 @@ class PokemonViewer {
 
     showSearchLoading() {
         const resultsDiv = document.getElementById('search-results');
-        resultsDiv.innerHTML = `
-            <div class="search-message">
-                <div class="loading-spinner"></div>
-                <p>Searching...</p>
-            </div>
-        `;
+        const skeletonCard = this.createSkeletonCard();
+        skeletonCard.style.maxWidth = '400px';
+        skeletonCard.style.margin = '0 auto';
+        
+        resultsDiv.innerHTML = '';
+        resultsDiv.appendChild(skeletonCard);
     }
 
     renderSearchResult(pokemon) {
